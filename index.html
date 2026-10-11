@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>تنبيه أمني</title>
+<style>
+  /* ==== يعدّل المعلّم النصوص من كائن DATA في أسفل السكربت ==== */
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --bg:#0a0e14; --panel:#111722; --danger:#ff3b3b; --danger-soft:#ff6b6b;
+    --safe:#1db954; --safe-soft:#4ade80; --ink:#f4f6fb; --muted:#9aa4b2;
+    --gold:#f5b301; --line:rgba(255,255,255,.08);
+  }
+  html,body{ height:100%; }
+  body{
+    font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+    background:var(--bg); color:var(--ink);
+    min-height:100dvh; display:flex; align-items:center; justify-content:center;
+    padding:20px; overflow:hidden; position:relative; transition:background .6s ease;
+  }
+  .screen{ display:none; width:100%; max-width:460px; animation:fade .4s ease; }
+  .screen.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+  /* ========== شاشة الفخ ========== */
+  #trap{ text-align:center; }
+  .warn-icon{ font-size:64px; line-height:1; margin-bottom:14px; animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.12);opacity:.75;} }
+  .trap-title{ font-size:24px; font-weight:800; color:var(--danger-soft); margin-bottom:6px; }
+  .trap-sub{ font-size:15px; color:var(--muted); margin-bottom:26px; }
+
+  .bar-wrap{ background:#000; border:1px solid var(--line); border-radius:14px; padding:18px 16px; margin-bottom:18px; }
+  .bar-label{ display:flex; justify-content:space-between; font-size:14px; margin-bottom:10px; color:var(--danger-soft); font-weight:700; }
+  .bar-track{ height:14px; background:#1a2230; border-radius:10px; overflow:hidden; }
+  .bar-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--danger),var(--gold)); border-radius:10px; transition:width .2s linear; }
+  .pct{ font-variant-numeric:tabular-nums; }
+
+  .log{ text-align:right; font-size:13.5px; color:var(--muted); min-height:132px; line-height:1.9; }
+  .log .row{ opacity:0; animation:slidein .3s forwards; display:flex; align-items:center; gap:8px; }
+  .log .row .mark{ color:var(--danger-soft); }
+  @keyframes slidein{ from{opacity:0; transform:translateX(10px);} to{opacity:1; transform:none;} }
+
+  /* ========== شاشة الكشف ========== */
+  #reveal{ text-align:center; }
+  .flip{ font-size:66px; line-height:1; margin-bottom:16px; animation:pop .5s ease; }
+  @keyframes pop{ 0%{transform:scale(.4);opacity:0;} 70%{transform:scale(1.15);} 100%{transform:scale(1);opacity:1;} }
+  .reveal-title{ font-size:27px; font-weight:800; color:var(--safe-soft); margin-bottom:12px; }
+  .reveal-body{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px; text-align:right; font-size:16px; line-height:2; }
+  .reveal-body strong{ color:var(--gold); }
+  .tag{ display:inline-block; background:rgba(29,185,84,.15); color:var(--safe-soft); font-size:13px; font-weight:700; padding:5px 12px; border-radius:20px; margin-bottom:18px; }
+
+  .lessons{ margin-top:18px; text-align:right; }
+  .lessons h3{ font-size:16px; margin-bottom:10px; color:var(--ink); }
+  .lesson{ display:flex; gap:10px; align-items:flex-start; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:9px; font-size:15px; line-height:1.7; }
+  .lesson .n{ flex:0 0 28px; height:28px; border-radius:50%; background:var(--safe); color:#042b14; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px; }
+
+  .stat{ display:flex; gap:10px; margin:20px 0 4px; }
+  .stat .box{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 8px; text-align:center; }
+  .stat .box b{ display:block; font-size:22px; color:var(--gold); }
+  .stat .box span{ font-size:12px; color:var(--muted); }
+
+  .btn{ display:block; width:100%; margin-top:22px; padding:16px; border:none; border-radius:14px; font-size:17px; font-weight:800; cursor:pointer; font-family:inherit; }
+  .btn-safe{ background:var(--safe); color:#042b14; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); margin-top:10px; }
+
+  .footer-note{ margin-top:18px; font-size:12px; color:var(--muted); text-align:center; line-height:1.7; }
+  body.revealed{ background:#071b10; }
+</style>
+</head>
+<body>
+
+  <!-- شاشة الفخ -->
+  <section id="trap" class="screen active">
+    <div class="warn-icon">⚠️</div>
+    <div class="trap-title" id="trapTitle">جارٍ الوصول إلى جهازك</div>
+    <div class="trap-sub" id="trapSub">يرجى عدم إغلاق الصفحة…</div>
+
+    <div class="bar-wrap">
+      <div class="bar-label">
+        <span id="barText">جارٍ سحب بيانات هاتفك</span>
+        <span class="pct"><span id="pctNum">0</span>%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    </div>
+
+    <div class="log" id="log"></div>
+  </section>
+
+  <!-- شاشة الكشف -->
+  <section id="reveal" class="screen">
+    <div class="flip">🎭</div>
+    <div class="tag" id="revealTag">محاكاة توعوية — لم يحدث شيء فعلاً</div>
+    <div class="reveal-title" id="revealTitle">اطمئن… هذا فخّ من الورشة</div>
+
+    <div class="reveal-body" id="revealBody"></div>
+
+    <div class="stat">
+      <div class="box"><b id="secCount">0</b><span>ثانية كفت</span></div>
+      <div class="box"><b>0</b><span>بيانات حقيقية أُخذت</span></div>
+      <div class="box"><b>1</b><span>درس مهم</span></div>
+    </div>
+
+    <div class="lessons">
+      <h3 id="lessonsTitle">كيف تحمي نفسك؟</h3>
+      <div id="lessonsList"></div>
+    </div>
+
+    <button class="btn btn-safe" id="replayBtn">أعد المحاكاة من البداية</button>
+    <div class="footer-note" id="footerNote"></div>
+  </section>
+
+<script>
+/* =======================================================================
+   لوحة التحكم — عدّل النصوص هنا فقط، ولا تلمس بقية الكود.
+   ======================================================================= */
+const DATA = {
+  // مدة شريط "السحب" بالثواني قبل الكشف
+  durationSeconds: 7,
+
+  // نصوص شاشة الفخ
+  trapTitle: "جارٍ الوصول إلى جهازك",
+  trapSub: "يرجى عدم إغلاق الصفحة…",
+  barText: "جارٍ سحب بيانات هاتفك",
+
+  // أسطر "السحب" الوهمية — تظهر تباعاً لإحداث الصدمة (كلها تمثيل، لا شيء حقيقي)
+  fakeSteps: [
+    "الاتصال بالجهاز…",
+    "قراءة جهات الاتصال…",
+    "الوصول إلى معرض الصور…",
+    "تحديد الموقع الجغرافي…",
+    "نسخ رسائل التطبيقات…",
+    "رفع البيانات إلى خادم مجهول…"
+  ],
+
+  // نصوص شاشة الكشف
+  revealTag: "محاكاة توعوية — لم يحدث شيء فعلاً",
+  revealTitle: "اطمئن… هذا فخّ من الورشة",
+  revealBodyLines: [
+    "هذه الصفحة <strong>لم تأخذ أي بيان</strong> من هاتفك، ولا تستطيع ذلك أصلاً.",
+    "لكن تخيّل لو كانت صفحة حقيقية صنعها مهاجم…",
+    "أنت مسحت رمز <strong>QR</strong> مجهول المصدر، وفتحت الرابط فوراً، دون أن تعرف إلى أين يأخذك."
+  ],
+  lessonsTitle: "كيف تحمي نفسك؟",
+  lessons: [
+    "لا تمسح رمز QR من مصدر لا تثق به.",
+    "اقرأ الرابط قبل فتحه، وتحقق من اسم الموقع.",
+    "امنح التطبيقات أقل الصلاحيات، وراجعها دورياً.",
+    "البيانات التي تعطيها اليوم… قد تُستغل غداً."
+  ],
+  footerNote: "أُعدّت هذه المحاكاة لأغراض التوعية ضمن ورشة التطبيق الآمن للذكاء الاصطناعي في البيئة المدرسية."
+};
+/* ===================== نهاية لوحة التحكم ===================== */
+
+(function(){
+  const $ = id => document.getElementById(id);
+  let elapsed = 0;
+
+  // تعبئة النصوص الثابتة
+  $("trapTitle").textContent = DATA.trapTitle;
+  $("trapSub").textContent   = DATA.trapSub;
+  $("barText").textContent   = DATA.barText;
+  $("revealTag").textContent = DATA.revealTag;
+  $("revealTitle").textContent = DATA.revealTitle;
+  $("lessonsTitle").textContent = DATA.lessonsTitle;
+  $("footerNote").textContent = DATA.footerNote;
+  $("revealBody").innerHTML = DATA.revealBodyLines.map(l => "<p>"+l+"</p>").join("");
+  $("lessonsList").innerHTML = DATA.lessons.map((l,i) =>
+    '<div class="lesson"><div class="n">'+(i+1)+'</div><div>'+l+'</div></div>'
+  ).join("");
+
+  let timers = [];
+  const clearAll = () => { timers.forEach(t=>clearTimeout(t)); timers=[]; clearInterval(progInt); };
+  let progInt;
+
+  function runTrap(){
+    clearAll();
+    const dur = DATA.durationSeconds * 1000;
+    const fill = $("barFill"), pct = $("pctNum"), log = $("log");
+    log.innerHTML = ""; fill.style.width="0%"; pct.textContent="0";
+    document.body.classList.remove("revealed");
+
+    const start = Date.now();
+    progInt = setInterval(()=>{
+      const p = Math.min(100, Math.round((Date.now()-start)/dur*100));
+      fill.style.width = p+"%"; pct.textContent = p;
+      if(p>=100){ clearInterval(progInt); }
+    }, 60);
+
+    // أسطر السحب الوهمية موزّعة على المدة
+    DATA.fakeSteps.forEach((step,i)=>{
+      timers.push(setTimeout(()=>{
+        const row = document.createElement("div");
+        row.className="row";
+        row.innerHTML = '<span class="mark">◆</span><span>'+step+'</span>';
+        log.appendChild(row);
+      }, dur*(i+0.5)/DATA.fakeSteps.length));
+    });
+
+    // الكشف
+    timers.push(setTimeout(reveal, dur+500));
+  }
+
+  function reveal(){
+    elapsed = DATA.durationSeconds;
+    $("secCount").textContent = elapsed;
+    document.body.classList.add("revealed");
+    $("trap").classList.remove("active");
+    $("reveal").classList.add("active");
+  }
+
+  $("replayBtn").addEventListener("click", ()=>{
+    $("reveal").classList.remove("active");
+    $("trap").classList.add("active");
+    runTrap();
+  });
+
+  runTrap();
+})();
+</script>
+</body>
+</html>
